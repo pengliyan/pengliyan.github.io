@@ -2,22 +2,23 @@
 <html lang="zh">
 <head><meta name="generator" content="Hexo 3.8.0">
     <meta charset="utf-8">
-<title>标签: bean - 清风徐来</title>
+<title>组件线程没有关闭导致tomcat无法关闭 - 清风徐来</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 
 
 
-    <meta name="description" content="慢慢来会比较快">
-<meta name="keywords" content="java">
-<meta property="og:type" content="website">
-<meta property="og:title" content="清风徐来">
-<meta property="og:url" content="https://pengliyan.github.io/tags/bean/index.html">
+    <meta name="description" content="本文记录实际项目中使用线程时遇到的相关问题，阐述、分析了产生的问题，最终给出解决方案。">
+<meta name="keywords" content="线程,tomcat">
+<meta property="og:type" content="article">
+<meta property="og:title" content="组件线程没有关闭导致tomcat无法关闭">
+<meta property="og:url" content="https://pengliyan.github.io/2019/07/06/组件线程没有关闭导致Tomcat无法关闭/index.html">
 <meta property="og:site_name" content="清风徐来">
-<meta property="og:description" content="慢慢来会比较快">
+<meta property="og:description" content="本文记录实际项目中使用线程时遇到的相关问题，阐述、分析了产生的问题，最终给出解决方案。">
 <meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-07-06T13:35:16.502Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="清风徐来">
-<meta name="twitter:description" content="慢慢来会比较快">
+<meta name="twitter:title" content="组件线程没有关闭导致tomcat无法关闭">
+<meta name="twitter:description" content="本文记录实际项目中使用线程时遇到的相关问题，阐述、分析了产生的问题，最终给出解决方案。">
 
 
 
@@ -87,7 +88,7 @@
         <div class="navbar-brand is-flex-center">
             <a class="navbar-item navbar-logo" href="/">
             
-                <img src="/images/logo.svg" alt="清风徐来" height="28">
+                <img src="/images/logo.svg" alt="组件线程没有关闭导致tomcat无法关闭" height="28">
             
             </a>
         </div>
@@ -133,29 +134,18 @@
         <div class="container">
             <div class="columns">
                 <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main"><div class="card">
-    <div class="card-content">
-        <nav class="breadcrumb" aria-label="breadcrumbs">
-        <ul>
-            <li><a href="/tags">标签</a></li>
-            <li class="is-active"><a href="#" aria-current="page">bean</a></li>
-        </ul>
-        </nav>
-    </div>
-</div>
-
-    <div class="card">
     
     <div class="card-image">
-        <a href="/2019/01/25/spring-in-action之bean装配/" class="image is-7by1">
-            <img class="thumbnail" src="https://raw.githubusercontent.com/pengliyan/ply-hexo-images/master/spring.jpg" alt="spring in action之bean装配">
-        </a>
+        <span class="image is-7by1">
+            <img class="thumbnail" src="https://raw.githubusercontent.com/pengliyan/ply-hexo-images/master/tomcat.jpg" alt="组件线程没有关闭导致tomcat无法关闭">
+        </span>
     </div>
     
     <div class="card-content article ">
         
         <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
             <div class="level-left">
-                <time class="level-item has-text-grey" datetime="2019-01-25T12:46:28.000Z">2019-01-25</time>
+                <time class="level-item has-text-grey" datetime="2019-07-06T12:52:30.000Z">2019-07-06</time>
                 
                 <div class="level-item">
                 <a class="has-link-grey -link" href="/categories/后端/">后端</a>
@@ -165,7 +155,7 @@
                 <span class="level-item has-text-grey">
                     
                     
-                    6 分钟 读完 (大约 965 个字)
+                    7 分钟 读完 (大约 977 个字)
                 </span>
                 
             </div>
@@ -173,21 +163,45 @@
         
         <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
             
-                <a class="has-link-black-ter" href="/2019/01/25/spring-in-action之bean装配/">spring in action之bean装配</a>
+                组件线程没有关闭导致tomcat无法关闭
             
         </h1>
         <div class="content">
-            <p>本文介绍了sping in action之bean装配，内容包括自动扫描、Java代码装配、xml装配、选择哪种装配方式最合适以及项目中犯过的错误等。</p>
+            <p>本文记录实际项目中使用线程时遇到的相关问题，阐述、分析了产生的问题，最终给出解决方案。</p>
+<a id="more"></a>
+<h2 id="问题描述"><a href="#问题描述" class="headerlink" title="问题描述"></a>问题描述</h2><p>Tomcat状态监控页面，点击停止按钮，页面一直显示正在停止，后台进程也一直显示正在停止，通过jstack分析，Tomcat关不掉是因为组件线程没有正常关闭导致<br><figure class="highlight plain hljs"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">&quot;pool-5-thread-1&quot; #89 prio=5 os_pion=0 tid=0x000000003561b800 nid=0x1743c waiting on condition [0x000000004413e000]</span><br><span class="line">   java.lang.Thread.State: TIMED_WAITING (parking)</span><br><span class="line">    at sun.misc.Unsafe.park(Native Method)</span><br><span class="line">    - parking to wait for  &lt;0x000000073a308cb0&gt; (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)</span><br><span class="line">    at java.util.concurrent.locks.LockSupport.park(LockSupport.java:175)</span><br><span class="line">    at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:2039)</span><br><span class="line">    at java.util.concurrent.LinkedBlockingQueue.take(LinkedBlockingQueue.java:442)</span><br><span class="line">    at com.*.*.*.notify.consumer.datadictionary.ListenerEventQueue.takeDataDictionary(ListenerEventQueue.java:2039）</span><br><span class="line">    at com.*.*.*.notify.consumer.datadictionary.DatadictionaryEventConsumer.updateDatadictionary(DatadictionaryEventConsumer.java:62）</span><br><span class="line">    at com.*.*.*.notify.consumer.datadictionary.AbstractEventConsumer.run(AbstractEventConsumer.java:64）    </span><br><span class="line">    at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)</span><br><span class="line">    at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)</span><br><span class="line">    at java.lang.Thread.run(Thread.java:748)</span><br></pre></td></tr></table></figure></p>
+<h2 id="问题分析"><a href="#问题分析" class="headerlink" title="问题分析"></a>问题分析</h2><figure class="highlight java hljs"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">WebContextLoaderListener</span> <span class="hljs-keyword">implements</span> <span class="hljs-title">ServletContextLinstener</span> </span>&#123;</span><br><span class="line">  <span class="hljs-keyword">private</span> Logger log = LoggerFactory.getLogger(WebContextLoaderListener.class);</span><br><span class="line">  <span class="hljs-keyword">private</span> ExecutorService executorService = Executors.newSingleThreadExecutor();</span><br><span class="line">    <span class="hljs-meta">@Override</span></span><br><span class="line">    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">contextInitialized</span><span class="hljs-params">(ServletContextEvent sce)</span></span>&#123;</span><br><span class="line">    <span class="hljs-keyword">try</span>&#123;</span><br><span class="line">      <span class="hljs-comment">//启动事件消费任务</span></span><br><span class="line">      Map&lt;String, AbstractEventConsumer&gt; eventConsumerList =  AppContext.getBeanOfType(AbstractEventConsumer.class);</span><br><span class="line">      <span class="hljs-keyword">if</span>(MapUtils.isNotEmpty(eventConsumerList))&#123;</span><br><span class="line">        <span class="hljs-keyword">for</span> (AbstractEventConsumer consumer : eventConsumerList.values())&#123;</span><br><span class="line">          <span class="hljs-keyword">if</span>(consumer != <span class="hljs-keyword">null</span>)&#123;</span><br><span class="line">            executorService.execute(consumer);</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="hljs-keyword">catch</span>(Exception)&#123;</span><br><span class="line">      log.error(*Log.toLog(ErrorCodeEnum.UNKNOW_ERROR.getCodeStr(), <span class="hljs-string">"WebContextLoaderListener init fail"</span>), e);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">    <span class="hljs-meta">@Override</span></span><br><span class="line">    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">contextDestroyed</span><span class="hljs-params">(ServletContextEvent sce)</span></span>&#123;</span><br><span class="line">    <span class="hljs-comment">//关闭线程池</span></span><br><span class="line">    <span class="hljs-keyword">if</span>(executorService != <span class="hljs-keyword">null</span> &amp;&amp; !executorService .isShutdown())&#123;</span><br><span class="line">      executorService.shutdown();</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>tomcat停止时，有执行销毁线程池操作，但线程并没有关闭。实际是executorService.shutdown()这种关闭线程的方式存在问题；</p>
+<ul>
+<li>调用shutdownNow()后，不可以再提交新的task(executorService.execute()操作)，已经提交的将继续执行，当所有线程结束执行当前任务，executorService才会真正关闭。</li>
+<li>调用shutdown()后，试图停止当前正在执行的task，并返回尚未执行的task列表。</li>
+</ul>
+<h2 id="解决方式"><a href="#解决方式" class="headerlink" title="解决方式"></a>解决方式</h2><figure class="highlight plain hljs"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">public void contextDestroyed(ServletContextEvent sce)&#123;</span><br><span class="line">  //关闭线程池</span><br><span class="line">  if(executorService != null &amp;&amp; !executorService .isShutdown())&#123;</span><br><span class="line">    executorService.shutdown();</span><br><span class="line">    try&#123;</span><br><span class="line">      if(!executorService.awaitTermination(2, TimeUnit.SECONDS))&#123;</span><br><span class="line">        executorService.shutdownNow();</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    catch(InterruptedException e)&#123;</span><br><span class="line">      executorService.shutdownNow();</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="其他问题"><a href="#其他问题" class="headerlink" title="其他问题"></a>其他问题</h2><p>阿里巴巴的JAva开发手册有这样一条规范：</p>
+<blockquote>
+<p>【强制】 线程池不允许使用 Executors 去创建，而是通过 ThreadPoolExecutor 的方式，这样的处理方式让写的同学更加明确线程池的运行规则，规避资源耗尽的风险。<br>说明：Executors 返回的线程池对象的弊端如下：<br>1） FixedThreadPool 和 SingleThreadPool：允许的请求队列长度为 Integer.MAX_VALUE，可能会堆积大量的请求，从而导致 OOM。<br>2） CachedThreadPool：允许的创建线程数量为 Integer.MAX_VALUE，可能会创建大量的线程，从而导致 OOM。</p>
+</blockquote>
+<p>Spring core包提供的ThreadPoolTaskExecutor对ThreadPoolExecutor进行了封装处理，项目中线程池配置如下：<br><figure class="highlight plain hljs"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">&lt;bean id=&quot;consumerThreadPool&quot; class=&quot;org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor&quot;&gt;</span><br><span class="line">    &lt;!-- 线程池的名称前缀 --&gt;</span><br><span class="line">    &lt;property name=&quot;threadNamePrefix&quot; value=&quot;issc-mq-message-consumer-threadpool-&quot; /&gt;</span><br><span class="line">    &lt;!-- 设置为守护线程 --&gt;</span><br><span class="line">    &lt;property name=&quot;daemon&quot; value=&quot;true&quot; /&gt;</span><br><span class="line">    &lt;!-- 线程池维护线程的最少数量 --&gt;</span><br><span class="line">    &lt;property name=&quot;corePoolSize&quot; value=&quot;5&quot; /&gt;</span><br><span class="line">    &lt;!-- 线程池维护线程的最大数量 --&gt;</span><br><span class="line">    &lt;property name=&quot;maxPoolSize&quot; value=&quot;10&quot; /&gt;</span><br><span class="line">    &lt;!-- 缓存队列的长度 --&gt;</span><br><span class="line">    &lt;property name=&quot;queueCapacity&quot; value=&quot;10&quot; /&gt;</span><br><span class="line">    &lt;!-- 允许的空闲时间 --&gt;</span><br><span class="line">    &lt;property name=&quot;keepAliveSeconds&quot; value=&quot;90&quot; /&gt;    </span><br><span class="line">    &lt;!-- 对拒绝task的处理策略 --&gt;</span><br><span class="line">    &lt;property name=&quot;rejectedExecutionHandler&quot;&gt;</span><br><span class="line">        &lt;bean class=&quot;java.util.concurrent.ThreadPoolExecutor$AbortPolicy&quot; /&gt;</span><br><span class="line">    &lt;/property&gt;</span><br><span class="line">&lt;/bean&gt;</span><br></pre></td></tr></table></figure></p>
+<p>ThreadPoolTaskExecutor的处理流程：</p>
+<ul>
+<li>当线程数量小于corePoolSize，新建线程处理请求</li>
+<li>当线程数量等于corePoolSize，把请求放入blockingQueue中，线程池中的空闲线程从blockingQueue中获取任务并处理</li>
+<li>当blockingQueue满了，会新建线程处理请求，如果线程数量等于maxPoolSize，使用rejectedExecutionHandler做拒绝处理</li>
+<li>当线程数量大于corePoolSize时，多于的线程会等待keepAliveSeconds时间，如果无请求处理就自行销毁</li>
+</ul>
+<p>修改后代码如下，设置为守护线程后，tomcat关闭时无需手动关闭线程。<br><figure class="highlight plain hljs"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">public class WebContextLoaderListener implements ServletContextLinstener &#123;</span><br><span class="line">  private Logger log = LoggerFactory.getLogger(WebContextLoaderListener.class);</span><br><span class="line">    @Override</span><br><span class="line">    public void contextInitialized(ServletContextEvent sce)&#123;</span><br><span class="line">    try&#123;</span><br><span class="line">      //启动事件消费任务</span><br><span class="line">      TaskExecutor consumerThreadPool= AppContext.getBean(&quot;consumerThreadPool&quot;);</span><br><span class="line">      if(consumerThreadPool != null)&#123;</span><br><span class="line">        Map&lt;String, AbstractEventConsumer&gt; eventConsumerList =  AppContext.getBean(AbstractEventConsumer.class);</span><br><span class="line">        if(MapUtils.isNotEmpty(eventConsumerList))&#123;</span><br><span class="line">          for (AbstractEventConsumer consumer : eventConsumerList.values())&#123;</span><br><span class="line">            if(consumer != null)&#123;</span><br><span class="line">              executorService.execute(consumer);</span><br><span class="line">            &#125;</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    catch(Exception)&#123;</span><br><span class="line">      log.error(*Log.toLog(ErrorCodeEnum.UNKNOW_ERROR.getCodeStr(), &quot;WebContextLoaderListener init fail&quot;), e);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+
         </div>
         
-        
-        <div class="level is-mobile">
+        <div class="level is-size-7 is-uppercase">
             <div class="level-start">
                 <div class="level-item">
-                <a class="button is-size-7 is-light" href="/2019/01/25/spring-in-action之bean装配/#more">阅读更多</a>
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/tomcat/">tomcat</a>, <a class="has-link-grey -link" href="/tags/线程/">线程</a>
                 </div>
             </div>
         </div>
+        
         
         
     </div>
@@ -197,7 +211,19 @@
 
 
 
-
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2019/01/26/单元测试/">
+                <span class="level-item">单元测试</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
 
 
 </div>
@@ -791,7 +817,7 @@
             <div class="level-start has-text-centered-mobile">
                 <a class="footer-logo is-block has-mb-6" href="/">
                 
-                    <img src="/images/logo.svg" alt="清风徐来" height="28">
+                    <img src="/images/logo.svg" alt="组件线程没有关闭导致tomcat无法关闭" height="28">
                 
                 </a>
                 <p class="is-size-7">
