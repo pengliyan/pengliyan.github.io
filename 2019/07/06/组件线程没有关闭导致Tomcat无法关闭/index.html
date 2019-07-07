@@ -15,7 +15,7 @@
 <meta property="og:site_name" content="清风徐来">
 <meta property="og:description" content="本文记录实际项目中使用线程时遇到的相关问题，阐述、分析了产生的问题，最终给出解决方案。">
 <meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2019-07-06T13:35:16.502Z">
+<meta property="og:updated_time" content="2019-07-06T14:04:41.428Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="组件线程没有关闭导致tomcat无法关闭">
 <meta name="twitter:description" content="本文记录实际项目中使用线程时遇到的相关问题，阐述、分析了产生的问题，最终给出解决方案。">
@@ -170,7 +170,7 @@
             <p>本文记录实际项目中使用线程时遇到的相关问题，阐述、分析了产生的问题，最终给出解决方案。</p>
 <a id="more"></a>
 <h2 id="问题描述"><a href="#问题描述" class="headerlink" title="问题描述"></a>问题描述</h2><p>Tomcat状态监控页面，点击停止按钮，页面一直显示正在停止，后台进程也一直显示正在停止，通过jstack分析，Tomcat关不掉是因为组件线程没有正常关闭导致<br><figure class="highlight plain hljs"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">&quot;pool-5-thread-1&quot; #89 prio=5 os_pion=0 tid=0x000000003561b800 nid=0x1743c waiting on condition [0x000000004413e000]</span><br><span class="line">   java.lang.Thread.State: TIMED_WAITING (parking)</span><br><span class="line">    at sun.misc.Unsafe.park(Native Method)</span><br><span class="line">    - parking to wait for  &lt;0x000000073a308cb0&gt; (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)</span><br><span class="line">    at java.util.concurrent.locks.LockSupport.park(LockSupport.java:175)</span><br><span class="line">    at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:2039)</span><br><span class="line">    at java.util.concurrent.LinkedBlockingQueue.take(LinkedBlockingQueue.java:442)</span><br><span class="line">    at com.*.*.*.notify.consumer.datadictionary.ListenerEventQueue.takeDataDictionary(ListenerEventQueue.java:2039）</span><br><span class="line">    at com.*.*.*.notify.consumer.datadictionary.DatadictionaryEventConsumer.updateDatadictionary(DatadictionaryEventConsumer.java:62）</span><br><span class="line">    at com.*.*.*.notify.consumer.datadictionary.AbstractEventConsumer.run(AbstractEventConsumer.java:64）    </span><br><span class="line">    at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)</span><br><span class="line">    at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)</span><br><span class="line">    at java.lang.Thread.run(Thread.java:748)</span><br></pre></td></tr></table></figure></p>
-<h2 id="问题分析"><a href="#问题分析" class="headerlink" title="问题分析"></a>问题分析</h2><figure class="highlight java hljs"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">WebContextLoaderListener</span> <span class="hljs-keyword">implements</span> <span class="hljs-title">ServletContextLinstener</span> </span>&#123;</span><br><span class="line">  <span class="hljs-keyword">private</span> Logger log = LoggerFactory.getLogger(WebContextLoaderListener.class);</span><br><span class="line">  <span class="hljs-keyword">private</span> ExecutorService executorService = Executors.newSingleThreadExecutor();</span><br><span class="line">    <span class="hljs-meta">@Override</span></span><br><span class="line">    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">contextInitialized</span><span class="hljs-params">(ServletContextEvent sce)</span></span>&#123;</span><br><span class="line">    <span class="hljs-keyword">try</span>&#123;</span><br><span class="line">      <span class="hljs-comment">//启动事件消费任务</span></span><br><span class="line">      Map&lt;String, AbstractEventConsumer&gt; eventConsumerList =  AppContext.getBeanOfType(AbstractEventConsumer.class);</span><br><span class="line">      <span class="hljs-keyword">if</span>(MapUtils.isNotEmpty(eventConsumerList))&#123;</span><br><span class="line">        <span class="hljs-keyword">for</span> (AbstractEventConsumer consumer : eventConsumerList.values())&#123;</span><br><span class="line">          <span class="hljs-keyword">if</span>(consumer != <span class="hljs-keyword">null</span>)&#123;</span><br><span class="line">            executorService.execute(consumer);</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="hljs-keyword">catch</span>(Exception)&#123;</span><br><span class="line">      log.error(*Log.toLog(ErrorCodeEnum.UNKNOW_ERROR.getCodeStr(), <span class="hljs-string">"WebContextLoaderListener init fail"</span>), e);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">    <span class="hljs-meta">@Override</span></span><br><span class="line">    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">contextDestroyed</span><span class="hljs-params">(ServletContextEvent sce)</span></span>&#123;</span><br><span class="line">    <span class="hljs-comment">//关闭线程池</span></span><br><span class="line">    <span class="hljs-keyword">if</span>(executorService != <span class="hljs-keyword">null</span> &amp;&amp; !executorService .isShutdown())&#123;</span><br><span class="line">      executorService.shutdown();</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="问题分析"><a href="#问题分析" class="headerlink" title="问题分析"></a>问题分析</h2><figure class="highlight java hljs"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">WebContextLoaderListener</span> <span class="hljs-keyword">implements</span> <span class="hljs-title">ServletContextLinstener</span> </span>&#123;</span><br><span class="line">  <span class="hljs-keyword">private</span> Logger log = LoggerFactory.getLogger(WebContextLoaderListener.class);</span><br><span class="line">  <span class="hljs-keyword">private</span> ExecutorService executorService = Executors.newSingleThreadExecutor();</span><br><span class="line">  <span class="hljs-meta">@Override</span></span><br><span class="line">  <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">contextInitialized</span><span class="hljs-params">(ServletContextEvent sce)</span></span>&#123;</span><br><span class="line">    <span class="hljs-keyword">try</span>&#123;</span><br><span class="line">      <span class="hljs-comment">//启动事件消费任务</span></span><br><span class="line">      Map&lt;String, AbstractEventConsumer&gt; eventConsumerList =  AppContext.getBeanOfType(AbstractEventConsumer.class);</span><br><span class="line">      <span class="hljs-keyword">if</span>(MapUtils.isNotEmpty(eventConsumerList))&#123;</span><br><span class="line">        <span class="hljs-keyword">for</span> (AbstractEventConsumer consumer : eventConsumerList.values())&#123;</span><br><span class="line">          <span class="hljs-keyword">if</span>(consumer != <span class="hljs-keyword">null</span>)&#123;</span><br><span class="line">            executorService.execute(consumer);</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="hljs-keyword">catch</span>(Exception)&#123;</span><br><span class="line">      log.error(*Log.toLog(ErrorCodeEnum.UNKNOW_ERROR.getCodeStr(), <span class="hljs-string">"WebContextLoaderListener init fail"</span>), e);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="hljs-meta">@Override</span></span><br><span class="line">  <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">contextDestroyed</span><span class="hljs-params">(ServletContextEvent sce)</span></span>&#123;</span><br><span class="line">    <span class="hljs-comment">//关闭线程池</span></span><br><span class="line">    <span class="hljs-keyword">if</span>(executorService != <span class="hljs-keyword">null</span> &amp;&amp; !executorService .isShutdown())&#123;</span><br><span class="line">      executorService.shutdown();</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>tomcat停止时，有执行销毁线程池操作，但线程并没有关闭。实际是executorService.shutdown()这种关闭线程的方式存在问题；</p>
 <ul>
 <li>调用shutdownNow()后，不可以再提交新的task(executorService.execute()操作)，已经提交的将继续执行，当所有线程结束执行当前任务，executorService才会真正关闭。</li>
@@ -213,6 +213,13 @@
 
 <div class="card card-transparent">
     <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2019/07/07/组件集群改造/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">组件集群改造</span>
+            </a>
+        </div>
         
         
         <div class="level-end">
@@ -267,7 +274,7 @@
                         文章
                     </p>
                     <p class="title has-text-weight-normal">
-                        4
+                        5
                     </p>
                 </div>
             </div>
@@ -287,7 +294,7 @@
                         标签
                     </p>
                     <p class="title has-text-weight-normal">
-                        8
+                        11
                     </p>
                 </div>
             </div>
@@ -390,7 +397,7 @@
                 <span class="level-item">后端</span>
             </span>
             <span class="level-end">
-                <span class="level-item tag">4</span>
+                <span class="level-item tag">5</span>
             </span>
         </a></li>
             </ul>
@@ -404,7 +411,7 @@
         <h3 class="menu-label">
             标签云
         </h3>
-        <a href="/tags/bean/" style="font-size: 10px;">bean</a> <a href="/tags/mockito/" style="font-size: 10px;">mockito</a> <a href="/tags/powermock/" style="font-size: 10px;">powermock</a> <a href="/tags/spring/" style="font-size: 10px;">spring</a> <a href="/tags/tomcat/" style="font-size: 10px;">tomcat</a> <a href="/tags/单元测试/" style="font-size: 10px;">单元测试</a> <a href="/tags/接口超时/" style="font-size: 10px;">接口超时</a> <a href="/tags/线程/" style="font-size: 10px;">线程</a>
+        <a href="/tags/bean/" style="font-size: 10px;">bean</a> <a href="/tags/mockito/" style="font-size: 10px;">mockito</a> <a href="/tags/powermock/" style="font-size: 10px;">powermock</a> <a href="/tags/session/" style="font-size: 10px;">session</a> <a href="/tags/spring/" style="font-size: 10px;">spring</a> <a href="/tags/tomcat/" style="font-size: 10px;">tomcat</a> <a href="/tags/单元测试/" style="font-size: 10px;">单元测试</a> <a href="/tags/密钥/" style="font-size: 10px;">密钥</a> <a href="/tags/接口超时/" style="font-size: 10px;">接口超时</a> <a href="/tags/线程/" style="font-size: 10px;">线程</a> <a href="/tags/集群/" style="font-size: 10px;">集群</a>
     </div>
 </div>
 
@@ -418,6 +425,25 @@
         <h3 class="menu-label">
             最新文章
         </h3>
+        
+        <article class="media">
+            
+            <a href="/2019/07/07/组件集群改造/" class="media-left">
+                <p class="image is-64x64">
+                    <img class="thumbnail" src="https://raw.githubusercontent.com/pengliyan/ply-hexo-images/master/distributed.png" alt="组件集群改造">
+                </p>
+            </a>
+            
+            <div class="media-content">
+                <div class="content">
+                    <div><time class="has-text-grey is-size-7 is-uppercase" datetime="2019-07-07T06:16:38.000Z">2019-07-07</time></div>
+                    <a href="/2019/07/07/组件集群改造/" class="has-link-black-ter is-size-6">组件集群改造</a>
+                    <p class="is-size-7 is-uppercase">
+                        <a class="has-link-grey -link" href="/categories/后端/">后端</a>
+                    </p>
+                </div>
+            </div>
+        </article>
         
         <article class="media">
             
@@ -513,7 +539,7 @@
                     <span class="level-item">七月 2019</span>
                 </span>
                 <span class="level-end">
-                    <span class="level-item tag">1</span>
+                    <span class="level-item tag">2</span>
                 </span>
             </a>
         </li>
@@ -564,6 +590,13 @@
                 </div>
                 
                 <div class="control">
+                    <a class="tags has-addons" href="/tags/session/">
+                        <span class="tag">session</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
                     <a class="tags has-addons" href="/tags/spring/">
                         <span class="tag">spring</span>
                         <span class="tag is-grey">1</span>
@@ -585,6 +618,13 @@
                 </div>
                 
                 <div class="control">
+                    <a class="tags has-addons" href="/tags/密钥/">
+                        <span class="tag">密钥</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
                     <a class="tags has-addons" href="/tags/接口超时/">
                         <span class="tag">接口超时</span>
                         <span class="tag is-grey">1</span>
@@ -594,6 +634,13 @@
                 <div class="control">
                     <a class="tags has-addons" href="/tags/线程/">
                         <span class="tag">线程</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/集群/">
+                        <span class="tag">集群</span>
                         <span class="tag is-grey">1</span>
                     </a>
                 </div>
@@ -623,6 +670,25 @@
         
         <article class="media">
             
+            <a href="/2019/07/07/组件集群改造/" class="media-left">
+                <p class="image is-64x64">
+                    <img class="thumbnail" src="https://raw.githubusercontent.com/pengliyan/ply-hexo-images/master/distributed.png" alt="组件集群改造">
+                </p>
+            </a>
+            
+            <div class="media-content">
+                <div class="content">
+                    <div><time class="has-text-grey is-size-7 is-uppercase" datetime="2019-07-07T06:16:38.000Z">2019-07-07</time></div>
+                    <a href="/2019/07/07/组件集群改造/" class="has-link-black-ter is-size-6">组件集群改造</a>
+                    <p class="is-size-7 is-uppercase">
+                        <a class="has-link-grey -link" href="/categories/后端/">后端</a>
+                    </p>
+                </div>
+            </div>
+        </article>
+        
+        <article class="media">
+            
             <a href="/2019/07/06/组件线程没有关闭导致Tomcat无法关闭/" class="media-left">
                 <p class="image is-64x64">
                     <img class="thumbnail" src="https://raw.githubusercontent.com/pengliyan/ply-hexo-images/master/tomcat.jpg" alt="组件线程没有关闭导致tomcat无法关闭">
@@ -715,7 +781,7 @@
                     <span class="level-item">七月 2019</span>
                 </span>
                 <span class="level-end">
-                    <span class="level-item tag">1</span>
+                    <span class="level-item tag">2</span>
                 </span>
             </a>
         </li>
@@ -766,6 +832,13 @@
                 </div>
                 
                 <div class="control">
+                    <a class="tags has-addons" href="/tags/session/">
+                        <span class="tag">session</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
                     <a class="tags has-addons" href="/tags/spring/">
                         <span class="tag">spring</span>
                         <span class="tag is-grey">1</span>
@@ -787,6 +860,13 @@
                 </div>
                 
                 <div class="control">
+                    <a class="tags has-addons" href="/tags/密钥/">
+                        <span class="tag">密钥</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
                     <a class="tags has-addons" href="/tags/接口超时/">
                         <span class="tag">接口超时</span>
                         <span class="tag is-grey">1</span>
@@ -796,6 +876,13 @@
                 <div class="control">
                     <a class="tags has-addons" href="/tags/线程/">
                         <span class="tag">线程</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/集群/">
+                        <span class="tag">集群</span>
                         <span class="tag is-grey">1</span>
                     </a>
                 </div>
