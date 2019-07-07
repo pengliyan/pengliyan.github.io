@@ -15,7 +15,7 @@
 <meta property="og:site_name" content="清风徐来">
 <meta property="og:description" content="本文记录实际项目中组件的集群改造方案，包括session共享、密钥共享等。">
 <meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2019-07-07T06:36:52.491Z">
+<meta property="og:updated_time" content="2019-07-07T07:38:41.057Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="组件集群改造">
 <meta name="twitter:description" content="本文记录实际项目中组件的集群改造方案，包括session共享、密钥共享等。">
@@ -155,7 +155,7 @@
                 <span class="level-item has-text-grey">
                     
                     
-                    7 分钟 读完 (大约 1049 个字)
+                    7 分钟 读完 (大约 1050 个字)
                 </span>
                 
             </div>
@@ -201,7 +201,7 @@
 <figure class="highlight plain hljs"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">private void refreshRsaKeyInfo()&#123;</span><br><span class="line">  // 1 生成公钥、私钥</span><br><span class="line">  publicKeyString = rsaAdvancedUtil.getPublicKeyString();</span><br><span class="line">  RSAPublicKey publicKey = rsaAdvancedUtil.getPublicKey();</span><br><span class="line">  privateKey = rsaAdvancedUtil.getPrivateKey();</span><br><span class="line">  // 2 将公钥私钥共享出去，保证所有集群节点使用同一套公钥私钥</span><br><span class="line">  String cacheKey = CacheKeyPrefix.RSA_KEY.generateKey(getClass().getName());</span><br><span class="line">  String cacheValue = aesService.encrypt(JsonUtil.toJsonString(new RsaKey(publicKey.getEncoded(), privateKey .getEncoded())));</span><br><span class="line">  if(!cacheService.setIfAbsent(cacheKey, cacheValue, 7, TimeUnit.DAYS))&#123;</span><br><span class="line">    // 如果共享失败，表示其他节点以及共享了，则放弃自己生成的公钥私钥，使用其他节点生成的公私钥对</span><br><span class="line">    cacheValue = cacheService.getString(cacheKey);</span><br><span class="line">    String decryptValue = aesService.decrypt(cacheValue);</span><br><span class="line">    if(StringUtils.isNotBlank(decryptValue))&#123;</span><br><span class="line">      RsaKey otherKey = JsonUtils.parseObject(decryptValue, new TypeReference&lt;RsaKey&gt;()&#123;&#125;);</span><br><span class="line">      if(otherKey != null)&#123;</span><br><span class="line">        rsaAdvancedUtil.rebuildKeyPark(otherKey.getPk(), otherKey.getVk());</span><br><span class="line">        publicKeyString = rsaAdvancedUtil.getPublicKeyString();</span><br><span class="line">        privateKey = rsaAdvancedUtil.getPrivateKey();</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <h2 id="任务竞争处理"><a href="#任务竞争处理" class="headerlink" title="任务竞争处理"></a>任务竞争处理</h2><p>同一个业务的定时任务在集群的多个实例中重复执行，可以通过以下方法解决：<br>执行定时任务之前，先尝试获取分布式锁（缓存值由upm.1.@indexCode生成）；<br>如果成功执行定时任务，执行后释放锁；如果失败，说明其他实例已执行，取消执行。<br><figure class="highlight plain hljs"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">public void excute()&#123;</span><br><span class="line">  //执行定时任务之前，先获取锁，并给锁加过期时间5分钟，5分钟之内这个任务不需要再次执行</span><br><span class="line">  String lockKey = CacheKeyPrefix.DISTRIBUTED_LOCK.generateKeyWithMark(KeyMark.TIMEDTASK_LOGOUT_EXPIRE_USER, getClass().getName());</span><br><span class="line">  if(cacheService.setIfAbsent(lockKey, WebContext.getWebIndexCode(), 5, TimeUnit.MINUTES))&#123;</span><br><span class="line">    log.info(*Log.toLog(&quot;AutoLogoutPasswordExpireUserTask start...&quot;));</span><br><span class="line">    ...</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
 <h2 id="通知竞争处理"><a href="#通知竞争处理" class="headerlink" title="通知竞争处理"></a>通知竞争处理</h2><p>集群中的所有实例接受MQ的同一个Topic消息，造成重复执行，可以通过以下方法解决：<br>在收到通知时，先尝试获取分布式锁，再进行业务处理，执行完后释放锁。<br><figure class="highlight plain hljs"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">public coid onMessage(TextNotifyMessage message) throws NotifyException&#123;</span><br><span class="line">  //获取消息之前先获取锁，获取锁之后，30分钟内MQ消息都由这个实例处理</span><br><span class="line">  String lockKey = CacheKeyPrefix.DISTRIBUTED_LOCK.generateKeyWithMark(KeyMark.CONSUMER_PERSON_CHANGE, getClass().getName());</span><br><span class="line">  String clientId = WebContext.getWebIndexCode();</span><br><span class="line">  if(cacheService.setIfAbsent(lockKey, clientId) || StringUtils.equals(clientId, cacheService.getString(lockKey))))&#123;</span><br><span class="line">    String data = message.getData();</span><br><span class="line">    if(log.isDebugEnabled())&#123;</span><br><span class="line">      log.debug(*Log.toLog(*Log.message(&quot;PersonChangeEventListener&quot;, &quot;mq recv data&quot;)), data);</span><br><span class="line">    &#125;</span><br><span class="line">    EventQueue.petPersonChangeEvent(data);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line">重复消费消息存在的问题：消费消息时如果向数据库插入数据，重复消费消息可能会出现重复数据。</span><br></pre></td></tr></table></figure></p>
-<h2 id="组件封装描述支持集群"><a href="#组件封装描述支持集群" class="headerlink" title="组件封装描述支持集群"></a>组件封装描述支持集群</h2><p>修改versioninfo.xml<br><figure class="highlight plain hljs"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&lt;segment id=&quot;upm&quot; type=&quot;webapp&quot;&gt;</span><br><span class="line">	&lt;params&gt;</span><br><span class="line">		&lt;param id=&quot;proxy.deploy&quot; value=&quot;/isupm&quot;/&gt;</span><br><span class="line">		&lt;param id=&quot;cluster.support&quot; value=&quot;true&quot;/&gt;</span><br><span class="line">		&lt;param id=&quot;proxy.isWebsocket&quot; value=&quot;false&quot;/&gt;</span><br><span class="line">	&lt;/params&gt;</span><br><span class="line">&lt;/segment &gt;</span><br></pre></td></tr></table></figure></p>
+<h2 id="组件封装描述支持集群"><a href="#组件封装描述支持集群" class="headerlink" title="组件封装描述支持集群"></a>组件封装描述支持集群</h2><p>修改versioninfo.xml<br><figure class="highlight plain hljs"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&lt;segment id=&quot;upm&quot; type=&quot;webapp&quot;&gt;</span><br><span class="line">	&lt;params&gt;</span><br><span class="line">		&lt;param id=&quot;proxy.deploy&quot; value=&quot;/isupm&quot;/&gt;</span><br><span class="line">		&lt;param id=&quot;cluster.support&quot; value=&quot;true&quot;/&gt;</span><br><span class="line">		&lt;param id=&quot;proxy.isWebsocket&quot; value=&quot;false&quot;/&gt;hexo</span><br><span class="line">	&lt;/params&gt;</span><br><span class="line">&lt;/segment &gt;</span><br></pre></td></tr></table></figure></p>
 
         </div>
         
@@ -225,6 +225,13 @@
 
 <div class="card card-transparent">
     <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2019/07/07/单点登录/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">单点登录</span>
+            </a>
+        </div>
         
         
         <div class="level-end">
@@ -279,7 +286,7 @@
                         文章
                     </p>
                     <p class="title has-text-weight-normal">
-                        5
+                        6
                     </p>
                 </div>
             </div>
@@ -299,7 +306,7 @@
                         标签
                     </p>
                     <p class="title has-text-weight-normal">
-                        11
+                        12
                     </p>
                 </div>
             </div>
@@ -402,7 +409,7 @@
                 <span class="level-item">后端</span>
             </span>
             <span class="level-end">
-                <span class="level-item tag">5</span>
+                <span class="level-item tag">6</span>
             </span>
         </a></li>
             </ul>
@@ -416,7 +423,7 @@
         <h3 class="menu-label">
             标签云
         </h3>
-        <a href="/tags/bean/" style="font-size: 10px;">bean</a> <a href="/tags/mockito/" style="font-size: 10px;">mockito</a> <a href="/tags/powermock/" style="font-size: 10px;">powermock</a> <a href="/tags/session/" style="font-size: 10px;">session</a> <a href="/tags/spring/" style="font-size: 10px;">spring</a> <a href="/tags/tomcat/" style="font-size: 10px;">tomcat</a> <a href="/tags/单元测试/" style="font-size: 10px;">单元测试</a> <a href="/tags/密钥/" style="font-size: 10px;">密钥</a> <a href="/tags/接口超时/" style="font-size: 10px;">接口超时</a> <a href="/tags/线程/" style="font-size: 10px;">线程</a> <a href="/tags/集群/" style="font-size: 10px;">集群</a>
+        <a href="/tags/bean/" style="font-size: 10px;">bean</a> <a href="/tags/mockito/" style="font-size: 10px;">mockito</a> <a href="/tags/powermock/" style="font-size: 10px;">powermock</a> <a href="/tags/session/" style="font-size: 10px;">session</a> <a href="/tags/spring/" style="font-size: 10px;">spring</a> <a href="/tags/tomcat/" style="font-size: 10px;">tomcat</a> <a href="/tags/单元测试/" style="font-size: 10px;">单元测试</a> <a href="/tags/单点登录/" style="font-size: 10px;">单点登录</a> <a href="/tags/密钥/" style="font-size: 10px;">密钥</a> <a href="/tags/接口超时/" style="font-size: 10px;">接口超时</a> <a href="/tags/线程/" style="font-size: 10px;">线程</a> <a href="/tags/集群/" style="font-size: 10px;">集群</a>
     </div>
 </div>
 
@@ -430,6 +437,25 @@
         <h3 class="menu-label">
             最新文章
         </h3>
+        
+        <article class="media">
+            
+            <a href="/2019/07/07/单点登录/" class="media-left">
+                <p class="image is-64x64">
+                    <img class="thumbnail" src="https://raw.githubusercontent.com/pengliyan/ply-hexo-images/master/sso.jpg" alt="单点登录">
+                </p>
+            </a>
+            
+            <div class="media-content">
+                <div class="content">
+                    <div><time class="has-text-grey is-size-7 is-uppercase" datetime="2019-07-07T07:40:23.000Z">2019-07-07</time></div>
+                    <a href="/2019/07/07/单点登录/" class="has-link-black-ter is-size-6">单点登录</a>
+                    <p class="is-size-7 is-uppercase">
+                        <a class="has-link-grey -link" href="/categories/后端/">后端</a>
+                    </p>
+                </div>
+            </div>
+        </article>
         
         <article class="media">
             
@@ -507,25 +533,6 @@
             </div>
         </article>
         
-        <article class="media">
-            
-            <a href="/2019/01/25/spring-in-action之bean装配/" class="media-left">
-                <p class="image is-64x64">
-                    <img class="thumbnail" src="https://raw.githubusercontent.com/pengliyan/ply-hexo-images/master/spring.jpg" alt="spring in action之bean装配">
-                </p>
-            </a>
-            
-            <div class="media-content">
-                <div class="content">
-                    <div><time class="has-text-grey is-size-7 is-uppercase" datetime="2019-01-25T12:46:28.000Z">2019-01-25</time></div>
-                    <a href="/2019/01/25/spring-in-action之bean装配/" class="has-link-black-ter is-size-6">spring in action之bean装配</a>
-                    <p class="is-size-7 is-uppercase">
-                        <a class="has-link-grey -link" href="/categories/后端/">后端</a>
-                    </p>
-                </div>
-            </div>
-        </article>
-        
     </div>
 </div>
 
@@ -544,7 +551,7 @@
                     <span class="level-item">七月 2019</span>
                 </span>
                 <span class="level-end">
-                    <span class="level-item tag">2</span>
+                    <span class="level-item tag">3</span>
                 </span>
             </a>
         </li>
@@ -618,6 +625,13 @@
                 <div class="control">
                     <a class="tags has-addons" href="/tags/单元测试/">
                         <span class="tag">单元测试</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/单点登录/">
+                        <span class="tag">单点登录</span>
                         <span class="tag is-grey">1</span>
                     </a>
                 </div>
@@ -675,6 +689,25 @@
         
         <article class="media">
             
+            <a href="/2019/07/07/单点登录/" class="media-left">
+                <p class="image is-64x64">
+                    <img class="thumbnail" src="https://raw.githubusercontent.com/pengliyan/ply-hexo-images/master/sso.jpg" alt="单点登录">
+                </p>
+            </a>
+            
+            <div class="media-content">
+                <div class="content">
+                    <div><time class="has-text-grey is-size-7 is-uppercase" datetime="2019-07-07T07:40:23.000Z">2019-07-07</time></div>
+                    <a href="/2019/07/07/单点登录/" class="has-link-black-ter is-size-6">单点登录</a>
+                    <p class="is-size-7 is-uppercase">
+                        <a class="has-link-grey -link" href="/categories/后端/">后端</a>
+                    </p>
+                </div>
+            </div>
+        </article>
+        
+        <article class="media">
+            
             <a href="/2019/07/07/组件集群改造/" class="media-left">
                 <p class="image is-64x64">
                     <img class="thumbnail" src="https://raw.githubusercontent.com/pengliyan/ply-hexo-images/master/distributed.png" alt="组件集群改造">
@@ -749,25 +782,6 @@
             </div>
         </article>
         
-        <article class="media">
-            
-            <a href="/2019/01/25/spring-in-action之bean装配/" class="media-left">
-                <p class="image is-64x64">
-                    <img class="thumbnail" src="https://raw.githubusercontent.com/pengliyan/ply-hexo-images/master/spring.jpg" alt="spring in action之bean装配">
-                </p>
-            </a>
-            
-            <div class="media-content">
-                <div class="content">
-                    <div><time class="has-text-grey is-size-7 is-uppercase" datetime="2019-01-25T12:46:28.000Z">2019-01-25</time></div>
-                    <a href="/2019/01/25/spring-in-action之bean装配/" class="has-link-black-ter is-size-6">spring in action之bean装配</a>
-                    <p class="is-size-7 is-uppercase">
-                        <a class="has-link-grey -link" href="/categories/后端/">后端</a>
-                    </p>
-                </div>
-            </div>
-        </article>
-        
     </div>
 </div>
 
@@ -786,7 +800,7 @@
                     <span class="level-item">七月 2019</span>
                 </span>
                 <span class="level-end">
-                    <span class="level-item tag">2</span>
+                    <span class="level-item tag">3</span>
                 </span>
             </a>
         </li>
@@ -860,6 +874,13 @@
                 <div class="control">
                     <a class="tags has-addons" href="/tags/单元测试/">
                         <span class="tag">单元测试</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/单点登录/">
+                        <span class="tag">单点登录</span>
                         <span class="tag is-grey">1</span>
                     </a>
                 </div>

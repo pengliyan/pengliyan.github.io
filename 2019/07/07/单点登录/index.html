@@ -2,22 +2,23 @@
 <html lang="zh">
 <head><meta name="generator" content="Hexo 3.8.0">
     <meta charset="utf-8">
-<title>标签: 线程 - 清风徐来</title>
+<title>单点登录 - 清风徐来</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 
 
 
-    <meta name="description" content="慢慢来会比较快">
-<meta name="keywords" content="java">
-<meta property="og:type" content="website">
-<meta property="og:title" content="清风徐来">
-<meta property="og:url" content="https://pengliyan.github.io/tags/线程/index.html">
+    <meta name="description" content="本文简单介绍单点登录的实现原理，并以项目组件为例，说明单点登录的跳转流程。">
+<meta name="keywords" content="单点登录">
+<meta property="og:type" content="article">
+<meta property="og:title" content="单点登录">
+<meta property="og:url" content="https://pengliyan.github.io/2019/07/07/单点登录/index.html">
 <meta property="og:site_name" content="清风徐来">
-<meta property="og:description" content="慢慢来会比较快">
+<meta property="og:description" content="本文简单介绍单点登录的实现原理，并以项目组件为例，说明单点登录的跳转流程。">
 <meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-07-07T07:44:21.612Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="清风徐来">
-<meta name="twitter:description" content="慢慢来会比较快">
+<meta name="twitter:title" content="单点登录">
+<meta name="twitter:description" content="本文简单介绍单点登录的实现原理，并以项目组件为例，说明单点登录的跳转流程。">
 
 
 
@@ -87,7 +88,7 @@
         <div class="navbar-brand is-flex-center">
             <a class="navbar-item navbar-logo" href="/">
             
-                <img src="/images/logo.svg" alt="清风徐来" height="28">
+                <img src="/images/logo.svg" alt="单点登录" height="28">
             
             </a>
         </div>
@@ -133,29 +134,18 @@
         <div class="container">
             <div class="columns">
                 <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main"><div class="card">
-    <div class="card-content">
-        <nav class="breadcrumb" aria-label="breadcrumbs">
-        <ul>
-            <li><a href="/tags">标签</a></li>
-            <li class="is-active"><a href="#" aria-current="page">线程</a></li>
-        </ul>
-        </nav>
-    </div>
-</div>
-
-    <div class="card">
     
     <div class="card-image">
-        <a href="/2019/07/06/组件线程没有关闭导致Tomcat无法关闭/" class="image is-7by1">
-            <img class="thumbnail" src="https://raw.githubusercontent.com/pengliyan/ply-hexo-images/master/tomcat.jpg" alt="组件线程没有关闭导致tomcat无法关闭">
-        </a>
+        <span class="image is-7by1">
+            <img class="thumbnail" src="https://raw.githubusercontent.com/pengliyan/ply-hexo-images/master/sso.jpg" alt="单点登录">
+        </span>
     </div>
     
     <div class="card-content article ">
         
         <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
             <div class="level-left">
-                <time class="level-item has-text-grey" datetime="2019-07-06T12:52:30.000Z">2019-07-06</time>
+                <time class="level-item has-text-grey" datetime="2019-07-07T07:40:23.000Z">2019-07-07</time>
                 
                 <div class="level-item">
                 <a class="has-link-grey -link" href="/categories/后端/">后端</a>
@@ -165,7 +155,7 @@
                 <span class="level-item has-text-grey">
                     
                     
-                    7 分钟 读完 (大约 977 个字)
+                    7 分钟 读完 (大约 1000 个字)
                 </span>
                 
             </div>
@@ -173,21 +163,62 @@
         
         <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
             
-                <a class="has-link-black-ter" href="/2019/07/06/组件线程没有关闭导致Tomcat无法关闭/">组件线程没有关闭导致tomcat无法关闭</a>
+                单点登录
             
         </h1>
         <div class="content">
-            <p>本文记录实际项目中使用线程时遇到的相关问题，阐述、分析了产生的问题，最终给出解决方案。</p>
+            <p>本文简单介绍单点登录的实现原理，并以项目组件为例，说明单点登录的跳转流程。</p>
+<a id="more"></a>
+<h2 id="单点登录原理"><a href="#单点登录原理" class="headerlink" title="单点登录原理"></a>单点登录原理</h2><p>下面举例说明单点登录跳转流程，涉及子系统A（<a href="http://www.a.com），子系统B（www.b.com），浏览器，cas服务（www.sso.com）" target="_blank" rel="noopener">www.a.com），子系统B（www.b.com），浏览器，cas服务（www.sso.com）</a></p>
+<h3 id="访问子系统A，用户未登录"><a href="#访问子系统A，用户未登录" class="headerlink" title="访问子系统A，用户未登录"></a>访问子系统A，用户未登录</h3><ul>
+<li>输入<a href="https://www.a.com" target="_blank" rel="noopener">https://www.a.com</a></li>
+<li>重定向到cas服务<a href="https://www.sso.com?service=https://www.a.com，service参数用于登录成功后重定向" target="_blank" rel="noopener">https://www.sso.com?service=https://www.a.com，service参数用于登录成功后重定向</a></li>
+<li>跳转到登录页，用户输入用户名密码，登录成功</li>
+<li>重定向到<a href="https://www.a.com?ticket=ST-16666-EA5WKa96r72ROB0f3UiB-cas，cas服务器给用户分发一个服务票据ST，同时cas向浏览器发送一个票据授权cookie（TGC）" target="_blank" rel="noopener">https://www.a.com?ticket=ST-16666-EA5WKa96r72ROB0f3UiB-cas，cas服务器给用户分发一个服务票据ST，同时cas向浏览器发送一个票据授权cookie（TGC）</a></li>
+<li>子系统A拿到ticket，去cas验证ticket是否有效，cas确认后返回用户的身份信息，子系统A将用户信息写到session</li>
+</ul>
+<h3 id="访问子系统A，用户已登录"><a href="#访问子系统A，用户已登录" class="headerlink" title="访问子系统A，用户已登录"></a>访问子系统A，用户已登录</h3><ul>
+<li>用户已登录，再次访问子系统A，子系统A在session中读到用户信息，不会再去cas认证</li>
+</ul>
+<h3 id="访问子系统B"><a href="#访问子系统B" class="headerlink" title="访问子系统B"></a>访问子系统B</h3><ul>
+<li>此时浏览器已经存在一个票据授权cookie（TGC），子系统B的session中没有用户信息，需要去cas服务器认证</li>
+<li>cas根据TGC从TGT获取用户信息，根据service参数生成一个ST，返回ST给浏览器并重定向，达到了sso的效果</li>
+<li>子系统B拿到ticket，去cas验证ticket是否有效，cas确认后返回用户的身份信息，子系统B将用户信息写到session</li>
+</ul>
+<blockquote>
+<p>ST（Service Ticket，服务票据）：ST是用户访问某一个系统的凭证，由cas服务在用户通过认证后生成，为了保证安全性，ST具有使用一次即自动销毁的特点<br>TGT（Ticket Granting Ticket，票据授权票据）：用户通过cas的身份认证，cas给用户颁发一个TGT，代表用户具有门户的通行证<br>TGC（Ticket Granting Cookie，票据授权cookie）：是TGT的容器，存放于在用户浏览器；TGC是实现单点登录的关键所在，通过传递TGC，cas服务能够直接判断用户身份的合法性，避免用户重复登录，用户浏览器关闭，TGC即失效。</p>
+</blockquote>
+<h2 id="通过访问项目isupm组件，说明单点登录的跳转流程"><a href="#通过访问项目isupm组件，说明单点登录的跳转流程" class="headerlink" title="通过访问项目isupm组件，说明单点登录的跳转流程"></a>通过访问项目isupm组件，说明单点登录的跳转流程</h2><h3 id="访问isupm，用户未登录"><a href="#访问isupm，用户未登录" class="headerlink" title="访问isupm，用户未登录"></a>访问isupm，用户未登录</h3><ul>
+<li>访问 <a href="https://192.168.0.100/isupm/user" target="_blank" rel="noopener">https://192.168.0.100/isupm/user</a></li>
+<li>重定向 <a href="https://192.168.0.100/portal/cas/login?service=https://192.168.0.100/isupm/user" target="_blank" rel="noopener">https://192.168.0.100/portal/cas/login?service=https://192.168.0.100/isupm/user</a></li>
+<li>重定向 <a href="https://192.168.0.100/bic/ssoService/v1/casLogin?service=https://192.168.0.100/isupm/user" target="_blank" rel="noopener">https://192.168.0.100/bic/ssoService/v1/casLogin?service=https://192.168.0.100/isupm/user</a><br>&amp;login=<a href="https://192.168.0.100:443/portal/cas/loginPage" target="_blank" rel="noopener">https://192.168.0.100:443/portal/cas/loginPage</a><br>&amp;home=<a href="https://192.168.0.100:443/portal" target="_blank" rel="noopener">https://192.168.0.100:443/portal</a></li>
+<li>跳转到登录页 <a href="https://192.168.0.100:443/portal/cas/loginPage&amp;home=https://192.168.0.100:443/portal" target="_blank" rel="noopener">https://192.168.0.100:443/portal/cas/loginPage&amp;home=https://192.168.0.100:443/portal</a></li>
+</ul>
+<h3 id="输入用户名密码。登录成功，跳转到门户首页，并在浏览器设置了cookie"><a href="#输入用户名密码。登录成功，跳转到门户首页，并在浏览器设置了cookie" class="headerlink" title="输入用户名密码。登录成功，跳转到门户首页，并在浏览器设置了cookie"></a>输入用户名密码。登录成功，跳转到门户首页，并在浏览器设置了cookie</h3><ul>
+<li>cookie: JSESSIONID=cF_Gfj2RueDzZJBn-SXbzUk1GI1BQezmIUGL5bbY; _languageType=zh_CN; portal.local=zh_CN; OPSMGRCASTGC=TGT-118-FH7kYNA1qBkWXz9zw9sDLguPN3cdcLNLPnEnqwx2APRYEHeT6J-cas; CASTGC=TGT-564-aweV71dfqBkldz9zI9oLtjEPNtuydcLiLadEnqwx2APILEINOcT-cas</li>
+</ul>
+<h3 id="访问isupm，用户已登录"><a href="#访问isupm，用户已登录" class="headerlink" title="访问isupm，用户已登录"></a>访问isupm，用户已登录</h3><ul>
+<li>访问 <a href="https://192.168.0.100/isupm/user，请求头带上了cookie，isupm服务的session中没有用户信息，去cas认证" target="_blank" rel="noopener">https://192.168.0.100/isupm/user，请求头带上了cookie，isupm服务的session中没有用户信息，去cas认证</a></li>
+<li>重定向 <a href="https://192.168.0.100/portal/cas/login?service=https://192.168.0.100/isupm/user" target="_blank" rel="noopener">https://192.168.0.100/portal/cas/login?service=https://192.168.0.100/isupm/user</a></li>
+<li>重定向 <a href="https://192.168.0.100/bic/ssoService/v1/casLogin?service=https://192.168.0.100/isupm/user" target="_blank" rel="noopener">https://192.168.0.100/bic/ssoService/v1/casLogin?service=https://192.168.0.100/isupm/user</a><br>&amp;login=<a href="https://192.168.0.100:443/portal/cas/loginPage" target="_blank" rel="noopener">https://192.168.0.100:443/portal/cas/loginPage</a><br>&amp;home=<a href="https://192.168.0.100:443/portal，cas根据TGC从TGT获取用户信息，根据service参数生成一个ST" target="_blank" rel="noopener">https://192.168.0.100:443/portal，cas根据TGC从TGT获取用户信息，根据service参数生成一个ST</a></li>
+<li>重定向 <a href="https://192.168.0.100/isupm/user&amp;ticket=ST-43379-YRggzOtYNIMXhrebBPBM-cas，isupm拿到ST，去cas验证ticket是否有效，cas确认后返回该用户的身份信息，isupm将用户信息写到session，并返回页面信息" target="_blank" rel="noopener">https://192.168.0.100/isupm/user&amp;ticket=ST-43379-YRggzOtYNIMXhrebBPBM-cas，isupm拿到ST，去cas验证ticket是否有效，cas确认后返回该用户的身份信息，isupm将用户信息写到session，并返回页面信息</a></li>
+<li>重定向<a href="https://192.168.0.100/isupm/user，能正常访问页面" target="_blank" rel="noopener">https://192.168.0.100/isupm/user，能正常访问页面</a></li>
+</ul>
+<h3 id="再次访问isupm，用户已登录"><a href="#再次访问isupm，用户已登录" class="headerlink" title="再次访问isupm，用户已登录"></a>再次访问isupm，用户已登录</h3><ul>
+<li>访问<a href="https://192.168.0.100/isupm/user，请求头上带了cookie，isupm组件根据cookie的JSESSIONID找到session，直接返回页面信息" target="_blank" rel="noopener">https://192.168.0.100/isupm/user，请求头上带了cookie，isupm组件根据cookie的JSESSIONID找到session，直接返回页面信息</a></li>
+</ul>
+
         </div>
         
-        
-        <div class="level is-mobile">
+        <div class="level is-size-7 is-uppercase">
             <div class="level-start">
                 <div class="level-item">
-                <a class="button is-size-7 is-light" href="/2019/07/06/组件线程没有关闭导致Tomcat无法关闭/#more">阅读更多</a>
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/单点登录/">单点登录</a>
                 </div>
             </div>
         </div>
+        
         
         
     </div>
@@ -197,7 +228,19 @@
 
 
 
-
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2019/07/07/组件集群改造/">
+                <span class="level-item">组件集群改造</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
 
 
 </div>
@@ -885,7 +928,7 @@
             <div class="level-start has-text-centered-mobile">
                 <a class="footer-logo is-block has-mb-6" href="/">
                 
-                    <img src="/images/logo.svg" alt="清风徐来" height="28">
+                    <img src="/images/logo.svg" alt="单点登录" height="28">
                 
                 </a>
                 <p class="is-size-7">
